@@ -945,7 +945,7 @@
 
     function spawnBoss(wasp = false) {
       const level = state.bossLevel;
-      const hp = wasp ? 3600 : bossMaxHp(level);
+      const hp = wasp ? Math.round(bossMaxHp(FINAL_STAGE) * 0.5) : bossMaxHp(level);
       state.bossDefeatLock = false;
       state.bossStartTime = state.time;
       boss = {
