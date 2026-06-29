@@ -1330,7 +1330,7 @@
       bossLasers = [];
 
       if (boss) {
-        const damage = Math.max(110, boss.maxHp * 0.08);
+        const damage = Math.max(110, boss.maxHp * (boss.wasp ? 0.08 : 0.2));
         boss.hp -= damage;
         burst(boss.x, boss.y, 58, "#ffffff", 3.4);
         if (boss.hp <= 0) {
