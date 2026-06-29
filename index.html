@@ -382,10 +382,12 @@
         <div class="control-row"><kbd>Shift</kbd><span>低速移動</span></div>
         <div class="control-row"><kbd>P</kbd><span>一時停止</span></div>
         <div class="control-row"><kbd>Pad</kbd><span>左スティック / 十字キー、A でショット、B でボンバー、L/R で低速、Start で一時停止</span></div>
+        <div class="control-row"><kbd>Tap</kbd><span>スマホではドラッグで移動、3回タップでボンバー</span></div>
       </div>
 
       <div class="status" id="status">
         <strong>Ready.</strong><br>
+        スマホ: ドラッグで移動 / 3回タップでボンバー<br>
         Start を押すと出撃します。スマホでは画面をドラッグして移動できます。
       </div>
 
@@ -985,7 +987,8 @@
         boss.fire = Math.min(boss.fire, 12);
         if (!boss.wasp && bossCanLaser(boss.level)) boss.laser = Math.min(boss.laser, 44);
         state.shake = Math.max(state.shake, 18);
-        state.bombFlash = Math.max(state.bombFlash, 24);
+        burst(boss.x, boss.y, 48, "#ff5252", 3.2);
+        burst(boss.x, boss.y, 24, "#ffc857", 2.4);
         setStatus(`<strong>Boss enraged!</strong><br>残りHP25%。弾速が上がります。`);
         beep(48, 0.22, "sawtooth", 0.06);
         beep(620, 0.11, "square", 0.035);
