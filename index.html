@@ -443,7 +443,7 @@
     const EXTEND_SCORES = [400000, 800000];
     const MEDAL_SMALL_KILLS = 10;
     const MEDAL_MEDIUM_KILLS = 2;
-    const MEDAL_LEVEL_MAX = 15;
+    const MEDAL_LEVEL_MAX = 10;
     const MEDAL_LEVEL_STEP = 5;
     const MEDAL_BASE_VALUE = 600;
     const MEDAL_VALUE_STEP = 220;
@@ -1139,8 +1139,9 @@
     }
 
     function medalColors(level) {
-      if (level >= 11) return ["#fff6b8", "#ffc857", "#b9871b"];
-      if (level >= 6) return ["#f6fbff", "#c9d4df", "#7f8b96"];
+      if (level >= MEDAL_LEVEL_MAX) return ["#ffffff", "#dff7ff", "#8ed9f1"];
+      if (level >= 7) return ["#fff6b8", "#ffc857", "#b9871b"];
+      if (level >= 4) return ["#f6fbff", "#c9d4df", "#7f8b96"];
       return ["#ffd0a3", "#c9793a", "#70401f"];
     }
 
