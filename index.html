@@ -442,8 +442,9 @@
     const STARTING_LIVES = 3;
     const EXTEND_SCORES = [400000, 800000];
     const MEDAL_SMALL_KILLS = 10;
-    const MEDAL_LEVEL_MAX = 20;
-    const MEDAL_LEVEL_STEP = 10;
+    const MEDAL_MEDIUM_KILLS = 2;
+    const MEDAL_LEVEL_MAX = 15;
+    const MEDAL_LEVEL_STEP = 5;
     const MEDAL_BASE_VALUE = 600;
     const MEDAL_VALUE_STEP = 220;
     const MAX_PARTICLES = 420;
@@ -464,6 +465,7 @@
       medalLevel: 1,
       medalCollected: 0,
       medalSmallKills: 0,
+      medalMediumKills: 0,
       wave: 1,
       rank: 1,
       rankDrop: 0,
@@ -498,6 +500,7 @@
       muted: false,
       touch: null,
       lastTapTime: 0,
+      tapCount: 0,
       last: 0
     };
 
@@ -545,6 +548,7 @@
       state.medalLevel = 1;
       state.medalCollected = 0;
       state.medalSmallKills = 0;
+      state.medalMediumKills = 0;
       state.wave = 1;
       state.rank = 1;
       state.rankDrop = 0;
@@ -577,6 +581,7 @@
       state.bossExplosionStep = 0;
       state.shake = 0;
       state.lastTapTime = 0;
+      state.tapCount = 0;
       player.x = W / 2;
       player.y = H - 88;
       player.cooldown = 0;
@@ -1089,7 +1094,11 @@
       state.stageKills += 1;
       if (enemy.kind === "carrier" || enemy.kind === "item") {
         state.stageMediumKills += 1;
-        dropMedal(enemy.x, enemy.y);
+        state.medalMediumKills += 1;
+        if (state.medalMediumKills >= MEDAL_MEDIUM_KILLS) {
+          state.medalMediumKills = 0;
+          dropMedal(enemy.x, enemy.y);
+        }
       } else {
         state.stageSmallKills += 1;
         state.medalSmallKills += 1;
@@ -1129,16 +1138,27 @@
       return MEDAL_BASE_VALUE + (state.medalLevel - 1) * MEDAL_VALUE_STEP;
     }
 
+    function medalColors(level) {
+      if (level >= 11) return ["#fff6b8", "#ffc857", "#b9871b"];
+      if (level >= 6) return ["#f6fbff", "#c9d4df", "#7f8b96"];
+      return ["#ffd0a3", "#c9793a", "#70401f"];
+    }
+
+    function medalSize(level) {
+      return level >= MEDAL_LEVEL_MAX ? 12 : 8;
+    }
+
     function dropMedal(x, y) {
+      const level = state.medalLevel;
       items.push({
         x,
         y,
         vx: (Math.random() - 0.5) * 28,
         vy: -34,
-        r: 8,
+        r: medalSize(level),
         type: "medal",
         value: medalValue(),
-        level: state.medalLevel,
+        level,
         spin: Math.random() * TAU
       });
     }
@@ -1160,6 +1180,7 @@
       state.medalLevel = 1;
       state.medalCollected = 0;
       state.medalSmallKills = 0;
+      state.medalMediumKills = 0;
       setStatus("<strong>Medal Break.</strong><br>画面上の勲章をすべて取り逃がしたため、勲章レベルが1に戻りました。");
       beep(150, 0.12, "sawtooth", 0.025);
     }
@@ -1834,17 +1855,20 @@
         ctx.translate(item.x, item.y);
         ctx.rotate(item.spin);
         if (item.type === "medal") {
-          const grad = ctx.createRadialGradient(-3, -4, 1, 0, 0, 13);
-          grad.addColorStop(0, "#fff6b8");
-          grad.addColorStop(0.42, "#ffc857");
-          grad.addColorStop(1, "#b9871b");
+          const level = item.level || state.medalLevel;
+          const size = medalSize(level);
+          const colors = medalColors(level);
+          const grad = ctx.createRadialGradient(-size * 0.35, -size * 0.45, 1, 0, 0, size * 1.6);
+          grad.addColorStop(0, colors[0]);
+          grad.addColorStop(0.42, colors[1]);
+          grad.addColorStop(1, colors[2]);
           ctx.fillStyle = grad;
           ctx.strokeStyle = "#f3f5f8";
-          ctx.lineWidth = 2;
+          ctx.lineWidth = level >= MEDAL_LEVEL_MAX ? 3 : 2;
           ctx.beginPath();
           for (let i = 0; i < 10; i++) {
             const a = -Math.PI / 2 + i * TAU / 10;
-            const r = i % 2 === 0 ? 12 : 7;
+            const r = i % 2 === 0 ? size * 1.5 : size * 0.88;
             ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
           }
           ctx.closePath();
@@ -1852,10 +1876,10 @@
           ctx.stroke();
           ctx.rotate(-item.spin);
           ctx.fillStyle = "#07090d";
-          ctx.font = "900 9px Segoe UI, sans-serif";
+          ctx.font = `900 ${level >= MEDAL_LEVEL_MAX ? 11 : 9}px Segoe UI, sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillText(item.level || state.medalLevel, 0, 1);
+          ctx.fillText(level, 0, 1);
           ctx.restore();
           continue;
         }
@@ -2297,8 +2321,14 @@
     canvas.addEventListener("pointerdown", (event) => {
       canvas.setPointerCapture(event.pointerId);
       const now = performance.now();
-      if (state.mode === "playing" && now - state.lastTapTime < 320) {
+      if (state.mode === "playing" && now - state.lastTapTime < 360) {
+        state.tapCount += 1;
+      } else {
+        state.tapCount = 1;
+      }
+      if (state.mode === "playing" && state.tapCount >= 3) {
         useBomb();
+        state.tapCount = 0;
         state.lastTapTime = 0;
       } else {
         state.lastTapTime = now;
