@@ -930,7 +930,7 @@
     function bossMaxHp(level) {
       const lateRelief = Math.max(0, level - 2) * BOSS_LATE_HP_RELIEF;
       const earlyRelief = BOSS_EARLY_HP_RELIEF[Math.min(FINAL_STAGE, level) - 1] || 0;
-      return BOSS_BASE_HP + (level - 1) * BOSS_HP_STEP - lateRelief - earlyRelief;
+      return Math.round((BOSS_BASE_HP + (level - 1) * BOSS_HP_STEP - lateRelief - earlyRelief) * 0.9);
     }
 
     function bossCanLaser(level) {
@@ -976,12 +976,15 @@
     function updateBoss(dt) {
       if (!boss) return;
       const rank = bossRank();
-      boss.move += dt;
+      const laserMoveLock = boss.level >= 3 && boss.level <= 4 && bossLasers.some((laser) => laser.telegraph > 0 || laser.active > 0);
+      if (!laserMoveLock) boss.move += dt;
       boss.spin += dt * 0.026;
       boss.y += (boss.targetY - boss.y) * 0.035 * dt;
-      boss.x = boss.wasp
-        ? W / 2 + Math.sin(boss.move / 24) * 128 + Math.sin(boss.move / 11) * 26
-        : W / 2 + Math.sin(boss.move / Math.max(42, 66 - rank * 3)) * Math.min(142, 95 + rank * 10);
+      if (!laserMoveLock) {
+        boss.x = boss.wasp
+          ? W / 2 + Math.sin(boss.move / 24) * 128 + Math.sin(boss.move / 11) * 26
+          : W / 2 + Math.sin(boss.move / Math.max(42, 66 - rank * 3)) * Math.min(142, 95 + rank * 10);
+      }
       if (!boss.enraged && boss.hp <= boss.maxHp * 0.25) {
         boss.enraged = true;
         boss.fire = Math.min(boss.fire, 12);
@@ -1108,6 +1111,8 @@
       } else if (boss.level === 2) {
         if (boss.phase % 2 === 0) aimedVolley();
         else scatterVolley();
+      } else if (boss.level === 3) {
+        aimedVolley();
       } else if (boss.phase % 3 === 0) {
         aimedVolley();
       } else {
