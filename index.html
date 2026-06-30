@@ -1200,14 +1200,26 @@
     }
 
     function medalColors(level) {
-      if (level >= MEDAL_LEVEL_MAX) return ["#ffffff", "#dff7ff", "#8ed9f1"];
-      if (level >= 7) return ["#fff6b8", "#ffc857", "#b9871b"];
-      if (level >= 4) return ["#f6fbff", "#c9d4df", "#7f8b96"];
-      return ["#ffd0a3", "#c9793a", "#70401f"];
+      if (level >= MEDAL_LEVEL_MAX) return ["#ffffff", "#dff8ff", "#78cbe9", "#2f86a7"];
+      if (level >= 7) return ["#fff7a8", "#ffc12e", "#9c6511", "#5f3908"];
+      if (level >= 4) return ["#f7fbff", "#b9c4cf", "#65717d", "#303942"];
+      return ["#ffd3a6", "#b86632", "#5f3219", "#2c160d"];
     }
 
     function medalSize(level) {
       return level >= MEDAL_LEVEL_MAX ? 12 : 8;
+    }
+
+    function medalTeeth(level) {
+      if (level <= 1) return 0;
+      return Math.min(24, 6 + level * 2);
+    }
+
+    function medalBeltCount(level) {
+      if (level >= MEDAL_LEVEL_MAX) return 3;
+      if (level >= 7) return 2;
+      if (level >= 4) return 1;
+      return 0;
     }
 
     function dropMedal(x, y) {
@@ -1920,6 +1932,28 @@
           const level = item.level || state.medalLevel;
           const size = medalSize(level);
           const colors = medalColors(level);
+          const teeth = medalTeeth(level);
+          const beltCount = medalBeltCount(level);
+          if (beltCount > 0) {
+            ctx.save();
+            ctx.rotate(-item.spin);
+            ctx.fillStyle = colors[3];
+            ctx.strokeStyle = "#f3f5f8";
+            ctx.lineWidth = 1.2;
+            for (let i = 0; i < beltCount; i++) {
+              const x = (i - (beltCount - 1) / 2) * size * 0.5;
+              ctx.beginPath();
+              ctx.moveTo(x - size * 0.26, size * 0.65);
+              ctx.lineTo(x + size * 0.26, size * 0.65);
+              ctx.lineTo(x + size * 0.42, size * 1.65);
+              ctx.lineTo(x, size * 1.35);
+              ctx.lineTo(x - size * 0.42, size * 1.65);
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
           const grad = ctx.createRadialGradient(-size * 0.35, -size * 0.45, 1, 0, 0, size * 1.6);
           grad.addColorStop(0, colors[0]);
           grad.addColorStop(0.42, colors[1]);
@@ -1928,13 +1962,22 @@
           ctx.strokeStyle = "#f3f5f8";
           ctx.lineWidth = level >= MEDAL_LEVEL_MAX ? 3 : 2;
           ctx.beginPath();
-          for (let i = 0; i < 10; i++) {
-            const a = -Math.PI / 2 + i * TAU / 10;
-            const r = i % 2 === 0 ? size * 1.5 : size * 0.88;
-            ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+          if (teeth === 0) {
+            ctx.arc(0, 0, size * 1.25, 0, TAU);
+          } else {
+            for (let i = 0; i < teeth * 2; i++) {
+              const a = -Math.PI / 2 + i * TAU / (teeth * 2);
+              const r = i % 2 === 0 ? size * 1.36 : size * 1.12;
+              ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+            }
           }
           ctx.closePath();
           ctx.fill();
+          ctx.stroke();
+          ctx.strokeStyle = colors[3];
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.arc(0, 0, size * 0.82, 0, TAU);
           ctx.stroke();
           ctx.rotate(-item.spin);
           ctx.fillStyle = "#07090d";
