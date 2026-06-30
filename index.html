@@ -434,6 +434,7 @@
     const RESULT_DURATION = 420;
     const BOSS_DEFEAT_RESULT_DELAY = 150;
     const BOSS_CLEAR_SCORE_ITEMS = 72;
+    const BOSS_LASER_INTERVAL_SCALE = 0.5;
     const BOSS_BASE_HP = 1250;
     const BOSS_HP_STEP = 500;
     const BOSS_LATE_HP_RELIEF = 120;
@@ -958,7 +959,7 @@
         hp,
         maxHp: hp,
         fire: wasp ? 18 : 34,
-        laser: 76 + Math.random() * 70,
+        laser: (76 + Math.random() * 70) * BOSS_LASER_INTERVAL_SCALE,
         spin: 0,
         phase: 0,
         move: 0,
@@ -1009,7 +1010,7 @@
       if (!boss.wasp && bossCanLaser(boss.level) && boss.laser <= 0 && boss.y > 90) {
         startBossLaser();
         const laserCadence = boss.enraged ? 0.72 : 1;
-        boss.laser = Math.max(52, (126 - rank * 10 + Math.random() * 82) * laserCadence);
+        boss.laser = Math.max(26, (126 - rank * 10 + Math.random() * 82) * laserCadence * BOSS_LASER_INTERVAL_SCALE);
       }
     }
 
