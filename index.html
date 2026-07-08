@@ -998,9 +998,9 @@
         beep(48, 0.22, "sawtooth", 0.06);
         beep(620, 0.11, "square", 0.035);
       }
-      boss.fire -= dt;
+      if (!laserMoveLock) boss.fire -= dt;
       boss.laser -= dt;
-      if (boss.fire <= 0 && boss.y > 80) {
+      if (!laserMoveLock && boss.fire <= 0 && boss.y > 80) {
         bossFire();
         boss.phase += 1;
         const pressure = Math.min(18, rank * 4);
