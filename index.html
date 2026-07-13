@@ -458,6 +458,7 @@
     const MEDAL_LEVEL_STEP = 5;
     const MEDAL_BASE_VALUE = 600;
     const MEDAL_VALUE_STEP = 220;
+    const MEDIUM_SPAWN_RATE = 0.1;
     const ENEMY_HP_WAVE_SCALE = 0.65;
     const MAX_PARTICLES = 420;
     const MAX_BOMB_SCORE_ITEMS = 120;
@@ -892,7 +893,7 @@
       const pattern = Math.random();
       const shouldSpawnRecoveryPower = state.recoveryPowerDrop && state.bossWarning <= 0;
       const shouldSpawnItem = shouldSpawnRecoveryPower || (state.itemDropsThisStage < 2 && state.time >= state.nextItemTime && state.bossWarning <= 0 && !boss);
-      const kind = shouldSpawnItem ? "item" : state.wave < 3 && pattern < 0.2 ? "fan" : pattern < 0.2 ? "carrier" : pattern < 0.55 ? "fan" : "aim";
+      const kind = shouldSpawnItem ? "item" : state.wave >= 3 && pattern < MEDIUM_SPAWN_RATE ? "carrier" : pattern < 0.55 ? "fan" : "aim";
       let drop = null;
       if (shouldSpawnRecoveryPower) {
         state.recoveryPowerDrop = false;
@@ -907,7 +908,7 @@
       enemies.push({
         x: pattern < 0.35 ? W / 2 + (Math.random() - 0.5) * 170 : (side < 0 ? 46 : W - 46),
         y: -38,
-        r: kind === "item" ? 13 : pattern < 0.2 ? 20 : 15,
+        r: kind === "item" ? 13 : kind === "carrier" ? 20 : 15,
         hp,
         maxHp: hp,
         vx: kind === "item" ? (Math.random() - 0.5) * 42 : pattern < 0.35 ? (Math.random() - 0.5) * 80 : -side * (45 + Math.random() * 35),
