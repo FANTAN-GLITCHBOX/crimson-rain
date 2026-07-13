@@ -382,12 +382,12 @@
         <div class="control-row"><kbd>Shift</kbd><span>低速移動</span></div>
         <div class="control-row"><kbd>P</kbd><span>一時停止</span></div>
         <div class="control-row"><kbd>Pad</kbd><span>左スティック / 十字キー、A でショット、B でボンバー、L/R で低速、Start で一時停止</span></div>
-        <div class="control-row"><kbd>Tap</kbd><span>スマホではドラッグで移動、3回タップでボンバー</span></div>
+        <div class="control-row"><kbd>Tap</kbd><span>スマホではドラッグで移動、2回タップでボンバー</span></div>
       </div>
 
       <div class="status" id="status">
         <strong>Ready.</strong><br>
-        スマホ: ドラッグで移動 / 3回タップでボンバー<br>
+        スマホ: ドラッグで移動 / 2回タップでボンバー<br>
         Start を押すと出撃します。スマホでは画面をドラッグして移動できます。
       </div>
 
@@ -446,7 +446,7 @@
     const FINAL_STAGE = 5;
     const WAVES_PER_STAGE = 4;
     const WAVE_DURATION = 1200;
-    const STAGE_RANK_CAPS = [1.15, 1.45, 1.8, 2.15, 2.55];
+    const STAGE_RANK_CAPS = [1.15, 1.45, 1.65, 2.0, 2.35];
     const MAX_BOMBS = 5;
     const MAX_POWER = 3;
     const TOUCH_PLAYER_OFFSET_Y = 92;
@@ -458,6 +458,7 @@
     const MEDAL_LEVEL_STEP = 5;
     const MEDAL_BASE_VALUE = 600;
     const MEDAL_VALUE_STEP = 220;
+    const ENEMY_HP_WAVE_SCALE = 0.65;
     const MAX_PARTICLES = 420;
     const MAX_BOMB_SCORE_ITEMS = 120;
     const NAME_ENTRY_MAX = 8;
@@ -485,7 +486,7 @@
       spawnTimer: 0,
       nextBossTime: BOSS_INTERVAL + STAGE_INTRO_DURATION,
       itemDropsThisStage: 0,
-      nextItemTime: 1200,
+      nextItemTime: STAGE_INTRO_DURATION + 1200,
       bossWarning: 0,
       warningBeep: 0,
       bossLevel: 0,
@@ -568,7 +569,7 @@
       state.spawnTimer = 0;
       state.nextBossTime = BOSS_INTERVAL + STAGE_INTRO_DURATION;
       state.itemDropsThisStage = 0;
-      state.nextItemTime = 1200;
+      state.nextItemTime = STAGE_INTRO_DURATION + 1200;
       state.bossWarning = 0;
       state.warningBeep = 0;
       state.bossLevel = 0;
@@ -744,7 +745,7 @@
     }
 
     function isCompleteScore(entry) {
-      return Boolean(entry.complete || (entry.bossLevel >= FINAL_STAGE && entry.wave >= stageBaseWave(FINAL_STAGE)));
+      return entry.complete === true;
     }
 
     function renderHighScores() {
@@ -901,12 +902,14 @@
         drop = state.itemDropsThisStage % 2 === 0 ? "bomb" : "power";
         state.nextItemTime = state.itemDropsThisStage === 1 ? state.time + 1800 : state.nextBossTime + 1200;
       }
+      const hpWave = 1 + Math.max(0, state.wave - 1) * ENEMY_HP_WAVE_SCALE;
+      const hp = kind === "item" ? 12 + hpWave * 0.8 : kind === "carrier" ? 46 + hpWave * 3.8 : 11 + hpWave * 1.15;
       enemies.push({
         x: pattern < 0.35 ? W / 2 + (Math.random() - 0.5) * 170 : (side < 0 ? 46 : W - 46),
         y: -38,
         r: kind === "item" ? 13 : pattern < 0.2 ? 20 : 15,
-        hp: kind === "item" ? 12 + state.wave * 0.8 : kind === "carrier" ? 46 + state.wave * 3.8 : 11 + state.wave * 1.15,
-        maxHp: kind === "item" ? 12 + state.wave * 0.8 : kind === "carrier" ? 46 + state.wave * 3.8 : 11 + state.wave * 1.15,
+        hp,
+        maxHp: hp,
         vx: kind === "item" ? (Math.random() - 0.5) * 42 : pattern < 0.35 ? (Math.random() - 0.5) * 80 : -side * (45 + Math.random() * 35),
         vy: kind === "item" ? 46 : kind === "carrier" ? 32 : 54 + Math.random() * 18,
         fire: kind === "item" ? 999 : 80 + Math.random() * 55,
@@ -978,7 +981,8 @@
     function updateBoss(dt) {
       if (!boss) return;
       const rank = bossRank();
-      const laserMoveLock = boss.level >= 3 && boss.level <= 4 && bossLasers.some((laser) => laser.telegraph > 0 || laser.active > 0);
+      const stageLaserLock = boss.level >= 3 && boss.level <= 4;
+      const laserMoveLock = stageLaserLock && bossLasers.some((laser) => laser.telegraph > 0 || laser.active > 0);
       if (!laserMoveLock) boss.move += dt;
       boss.spin += dt * 0.026;
       boss.y += (boss.targetY - boss.y) * 0.035 * dt;
@@ -990,7 +994,6 @@
       if (!boss.enraged && boss.hp <= boss.maxHp * 0.25) {
         boss.enraged = true;
         boss.fire = Math.min(boss.fire, 12);
-        if (!boss.wasp && bossCanLaser(boss.level)) boss.laser = Math.min(boss.laser, 44);
         state.shake = Math.max(state.shake, 18);
         burst(boss.x, boss.y, 48, "#ff5252", 3.2);
         burst(boss.x, boss.y, 24, "#ffc857", 2.4);
@@ -998,19 +1001,21 @@
         beep(48, 0.22, "sawtooth", 0.06);
         beep(620, 0.11, "square", 0.035);
       }
-      if (!laserMoveLock) boss.fire -= dt;
       boss.laser -= dt;
-      if (!laserMoveLock && boss.fire <= 0 && boss.y > 80) {
+      const startLaserNow = !boss.wasp && bossCanLaser(boss.level) && boss.laser <= 0 && boss.y > 90;
+      if (startLaserNow) {
+        startBossLaser();
+        boss.laser = BOSS_LASER_INTERVAL + Math.random() * BOSS_LASER_INTERVAL_RANDOM;
+      }
+      const laserAttackLock = laserMoveLock || (stageLaserLock && startLaserNow);
+      if (!laserAttackLock) boss.fire -= dt;
+      if (!laserAttackLock && boss.fire <= 0 && boss.y > 80) {
         bossFire();
         boss.phase += 1;
         const pressure = Math.min(18, rank * 4);
         const cadence = boss.enraged ? 0.62 : 1;
         const earlyEase = boss.level === 1 ? 18 : boss.level === 2 ? 10 : 0;
         boss.fire = boss.wasp ? (boss.enraged ? 10 : 15) : ((boss.phase % 3 === 0 ? 30 - pressure : 42 - pressure) + earlyEase) * cadence;
-      }
-      if (!boss.wasp && bossCanLaser(boss.level) && boss.laser <= 0 && boss.y > 90) {
-        startBossLaser();
-        boss.laser = BOSS_LASER_INTERVAL + Math.random() * BOSS_LASER_INTERVAL_RANDOM;
       }
     }
 
@@ -1022,11 +1027,12 @@
     function startBossLaser() {
       if (!boss) return;
       const rank = bossRank();
+      const baseWidth = boss.level === 3 ? 46 : 54;
       bossLasers.push({
         x: boss.x,
         sourceX: boss.x,
         sourceY: boss.y,
-        width: Math.min(98, 54 + rank * 8),
+        width: Math.min(98, baseWidth + rank * 8),
         telegraph: 62,
         active: 0,
         life: 0,
@@ -1038,7 +1044,7 @@
 
     function updateBossLasers(dt) {
       for (const laser of bossLasers) {
-        if (laser.telegraph > 0 && boss) {
+        if (boss) {
           laser.sourceX = boss.x;
           laser.sourceY = boss.y;
           laser.x = boss.x;
@@ -1089,11 +1095,11 @@
         return;
       }
       const aimedVolley = () => {
-        const baseSpread = boss.level === 1 ? 2 : 4;
+        const baseSpread = boss.level === 1 ? 2 : boss.level === 3 ? 3 : 4;
         const spread = Math.min(10, baseSpread + Math.floor(rank / 2) + (boss.enraged ? 2 : 0));
         for (let i = -spread; i <= spread; i++) {
           const angleStep = boss.level === 1 ? 0.13 : 0.11;
-          const speedEase = boss.level === 1 ? 0.82 : boss.level === 2 ? 0.92 : 1;
+          const speedEase = boss.level === 1 ? 0.82 : boss.level <= 3 ? 0.92 : 1;
           addEnemyBullet(boss.x, boss.y + 28, aim + i * angleStep, (104 + state.rank * 14 + rank * 9) * rageSpeed * speedEase, 3.6, boss.enraged ? "#ff5252" : "#ffc857");
         }
       };
@@ -1624,10 +1630,10 @@
       state.pendingStageIntro = !finalClear;
       state.completePending = finalClear;
       state.bossResultPending = true;
-      state.nextBossTime = finalClear ? Number.POSITIVE_INFINITY : state.time + BOSS_INTERVAL + BOSS_DEFEAT_RESULT_DELAY + RESULT_DURATION + STAGE_INTRO_DURATION;
+      state.nextBossTime = finalClear ? Number.POSITIVE_INFINITY : state.time + BOSS_INTERVAL + BOSS_DEFEAT_RESULT_DELAY + STAGE_INTRO_DURATION;
       state.itemDropsThisStage = 0;
       state.recoveryPowerDrop = false;
-      state.nextItemTime = finalClear ? Number.POSITIVE_INFINITY : state.time + BOSS_DEFEAT_RESULT_DELAY + RESULT_DURATION + STAGE_INTRO_DURATION + 1200;
+      state.nextItemTime = finalClear ? Number.POSITIVE_INFINITY : state.time + BOSS_DEFEAT_RESULT_DELAY + STAGE_INTRO_DURATION + 1200;
       state.stage = finalClear ? FINAL_STAGE : state.stage + 1;
       state.wave = stageBaseWave(state.stage);
       state.stageIntro = 0;
@@ -1636,7 +1642,7 @@
       state.stageMediumKills = 0;
       state.stageBombsUsed = 0;
       state.stageMisses = 0;
-      state.spawnTimer = finalClear ? 999999 : BOSS_DEFEAT_RESULT_DELAY + RESULT_DURATION + STAGE_INTRO_DURATION;
+      state.spawnTimer = finalClear ? 999999 : BOSS_DEFEAT_RESULT_DELAY + STAGE_INTRO_DURATION;
       setStatus(`<strong>Boss Lv.${defeatedLevel} defeated.</strong><br>${clearSeconds.toFixed(1)}秒撃破 / TOTAL BONUS +${totalBonus.toLocaleString("ja-JP")}。爆発終了後にリザルトを表示します。`);
       beep(58, 0.42, "sawtooth", 0.07);
       beep(180, 0.2, "square", 0.04);
@@ -1739,8 +1745,6 @@
       player.respawn = 0;
       state.nameEntry = { active: true, saved: false, name: "" };
       startBtn.textContent = "Enter Name";
-      setStatus("<strong>Congratulations!</strong><br>名前を入力して Enter でスコア登録します。");
-      setStatus(`<strong>COMPLETE.</strong><br>Score ${state.score.toLocaleString("ja-JP")}。Restart で再挑戦できます。`);
       setStatus("<strong>Congratulations!</strong><br>名前を入力して Enter でスコア登録します。");
       beep(260, 0.18, "triangle", 0.035);
       beep(520, 0.18, "square", 0.028);
@@ -2470,7 +2474,7 @@
       } else {
         state.tapCount = 1;
       }
-      if (state.mode === "playing" && state.tapCount >= 3) {
+      if (state.mode === "playing" && state.tapCount >= 2) {
         useBomb();
         state.tapCount = 0;
         state.lastTapTime = 0;
